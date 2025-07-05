@@ -1,68 +1,58 @@
 // scripts/solo.js
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- DOM Elements ---
+    // --- 1. DOM Element References ---
     const setupScreen = document.getElementById('setup-screen');
     const typingScreen = document.getElementById('typing-screen');
     const resultsScreen = document.getElementById('results-screen');
     const countdownOverlay = document.getElementById('countdown-overlay');
-
+    const paragraphDisplay = document.getElementById('paragraph-display');
     const timeSelect = document.getElementById('time-select');
     const startBtn = document.getElementById('start-btn');
     const playAgainBtn = document.getElementById('play-again-btn');
-
-    const lastWpmDisplay = document.getElementById('last-wpm');
-    const bestWpmDisplay = document.getElementById('best-wpm');
     const countdownTimer = document.getElementById('countdown-timer');
     const timeDisplay = document.getElementById('time-display');
     const wpmDisplay = document.getElementById('wpm-display');
-    const paragraphDisplay = document.getElementById('paragraph-display');
-
+    const lastWpmDisplay = document.getElementById('last-wpm');
+    const bestWpmDisplay = document.getElementById('best-wpm');
     const resultWpm = document.getElementById('result-wpm');
     const resultAccuracy = document.getElementById('result-accuracy');
     const resultErrors = document.getElementById('result-errors');
     const resultChars = document.getElementById('result-chars');
 
-    // --- State Management ---
-    let state = {
-        status: 'waiting', // waiting, countdown, typing, finished
-        timer: null,
-        countdown: null,
-        timeRemaining: 0,
-        selectedDuration: 300,
-        characters: [],
-        currentIndex: 0,
-        errors: 0,
-        totalCharsTyped: 0,
-    };
+    // --- 2. State Management ---
+    // The state object is now always transient. It is never saved to localStorage.
+    let state;
 
-    // --- Functions ---
+    // --- 3. Core Game Flow ---
 
     /**
-     * Initializes the application.
+     * Initializes the application on page load.
+     * **CRITICAL FIX:** This function no longer tries to load a saved game.
+     * It simply attaches listeners and calls resetGame() to ensure a fresh start.
      */
     function init() {
-        loadStatsFromStorage();
-        setupScreen.classList.remove('hidden');
-        typingScreen.classList.add('hidden');
-        resultsScreen.classList.add('hidden');
-        countdownOverlay.classList.add('hidden');
-
+        // Attach event listeners that persist across games
         startBtn.addEventListener('click', startGame);
         playAgainBtn.addEventListener('click', resetGame);
-        timeSelect.addEventListener('change', (e) => {
-            state.selectedDuration = parseInt(e.target.value, 10);
-        });
-        state.selectedDuration = parseInt(timeSelect.value, 10);
+        
+        // Call resetGame to set up the initial clean state.
+        resetGame();
     }
 
     /**
-     * Resets the game to the initial setup screen.
+     * Resets the entire game to the setup screen.
+     * This is the single source of truth for a "new game" state.
      */
     function resetGame() {
-        clearInterval(state.timer);
-        clearInterval(state.countdown);
+        // Stop any active timers
+        clearInterval(state?.timer);
+        clearInterval(state?.countdown);
+
+        // Remove the keydown listener from the previous session
         document.removeEventListener('keydown', handleKeyPress);
+
+        // Re-create the state object from scratch
         state = {
             status: 'waiting',
             timer: null,
@@ -74,67 +64,107 @@ document.addEventListener('DOMContentLoaded', () => {
             errors: 0,
             totalCharsTyped: 0,
         };
-        init();
+
+        // Reset the UI completely
+        paragraphDisplay.innerHTML = '';
+        paragraphDisplay.scrollTop = 0; // Reset scroll position
+
+        // If you have a typing input field, clear it and blur/focus it
+        const typingInput = document.getElementById('typing-input');
+        if (typingInput) {
+            typingInput.value = '';
+            typingInput.blur();
+        }
+
+        // Reset all text displays
+        wpmDisplay.textContent = '0';
+        timeDisplay.textContent = `${Math.floor(state.selectedDuration / 60)}:${(state.selectedDuration % 60).toString().padStart(2, '0')}`;
+        
+        // Show the setup screen and hide others
+        resultsScreen.classList.add('hidden');
+        typingScreen.classList.add('hidden');
+        countdownOverlay.classList.add('hidden');
+        setupScreen.classList.remove('hidden');
+
+        // Load historical stats (Best WPM, etc.)
+        loadHistoricalStats();
     }
 
     /**
-     * Loads the last and best WPM from localStorage.
+     * Kicks off a new game session from the setup screen.
      */
-    function loadStatsFromStorage() {
-        const lastWPM = localStorage.getItem('typingRacer_lastWPM');
-        const bestWPM = localStorage.getItem('typingRacer_bestWPM');
-        lastWpmDisplay.textContent = lastWPM ? `${lastWPM}` : 'N/A';
-        bestWpmDisplay.textContent = bestWPM ? `${bestWPM}` : 'N/A';
+    async function startGame() {
+        // Update selectedDuration based on the current dropdown value
+        state.selectedDuration = parseInt(timeSelect.value, 10);
+        state.timeRemaining = state.selectedDuration;
+        setupScreen.classList.add('hidden');
+        state.status = 'countdown';
+
+        // Fetch a new set of paragraphs for this session
+        await fetchAndPrepareParagraphs();
+        
+        if (state.characters.length === 0) {
+            alert('Error: Could not load typing text. Please try again.');
+            resetGame(); // Go back to setup if fetching fails
+            return;
+        }
+
+        startCountdown();
     }
 
     /**
-     * Fetches paragraphs from the JSON file and prepares them for the test.
+     * Handles the final phase of the game: showing results.
      */
+    function endGame() {
+        if (state.status !== 'typing') return;
+
+        clearInterval(state.timer);
+        state.status = 'finished';
+        document.removeEventListener('keydown', handleKeyPress);
+        
+        typingScreen.classList.add('hidden');
+        calculateAndDisplayResults();
+        resultsScreen.classList.remove('hidden');
+    }
+
     async function fetchAndPrepareParagraphs() {
         try {
+            // Clear the paragraph display and remove all previous spans
+            paragraphDisplay.innerHTML = '';
+            // Also reset scroll position
+            paragraphDisplay.scrollTop = 0;
+
+            // Reset state variables for a new paragraph
+            state.currentIndex = 0;
+            state.errors = 0;
+            state.totalCharsTyped = 0;
+
             const response = await fetch('../../data/paragraphs.json');
             const data = await response.json();
-            
-            // Generate enough text based on selected time (avg 50 WPM)
-            const wordsPerMinute = 50;
-            const charsPerWord = 5;
-            const requiredChars = (state.selectedDuration / 60) * wordsPerMinute * charsPerWord;
-
+            const requiredChars = (state.selectedDuration / 60) * 50 * 5; // Approx.
             let fullText = '';
-            let shuffledParagraphs = data.paragraphs.sort(() => 0.5 - Math.random());
+            let shuffled = data.paragraphs.sort(() => 0.5 - Math.random());
+            while (fullText.length < requiredChars) fullText += shuffled.join(' ') + ' ';
             
-            while (fullText.length < requiredChars) {
-                fullText += shuffledParagraphs.join(' ') + ' ';
-            }
-            fullText = fullText.trim();
-
-            paragraphDisplay.innerHTML = '';
-            state.characters = fullText.split('').map(char => {
+            state.characters = fullText.trim().split('').map(char => {
                 const span = document.createElement('span');
                 span.innerText = char;
                 span.className = 'char';
                 paragraphDisplay.appendChild(span);
                 return span;
             });
+
+            // If you have a typing input field, clear and focus it for the new paragraph
+            const typingInput = document.getElementById('typing-input');
+            if (typingInput) {
+                typingInput.value = '';
+                typingInput.focus();
+            }
         } catch (error) {
             console.error('Failed to load paragraphs:', error);
-            paragraphDisplay.innerText = "Error loading text. Please try again.";
         }
     }
 
-    /**
-     * Starts the game by fetching text and beginning the countdown.
-     */
-    async function startGame() {
-        state.status = 'countdown';
-        setupScreen.classList.add('hidden');
-        await fetchAndPrepareParagraphs();
-        startCountdown();
-    }
-
-    /**
-     * Displays the 3-2-1 countdown.
-     */
     function startCountdown() {
         countdownOverlay.classList.remove('hidden');
         let count = 3;
@@ -144,182 +174,110 @@ document.addEventListener('DOMContentLoaded', () => {
             if (count > 0) {
                 countdownTimer.textContent = count;
             } else {
+                clearInterval(state.countdown);
                 countdownTimer.textContent = 'Go!';
                 setTimeout(() => {
-                    clearInterval(state.countdown);
                     countdownOverlay.classList.add('hidden');
                     startTypingSession();
                 }, 500);
             }
         }, 1000);
     }
-    
-    /**
-     * Begins the actual typing session.
-     */
+
     function startTypingSession() {
         state.status = 'typing';
         typingScreen.classList.remove('hidden');
         state.timeRemaining = state.selectedDuration;
-        updateTimerDisplay();
-        
-        // Set initial cursor
-        if(state.characters.length > 0) {
-            state.characters[0].classList.add('current', 'blink');
-        }
-
-        // Disable paste, copy, select
-        paragraphDisplay.addEventListener('copy', e => e.preventDefault());
-        paragraphDisplay.addEventListener('paste', e => e.preventDefault());
-        paragraphDisplay.addEventListener('selectstart', e => e.preventDefault());
-
-
         document.addEventListener('keydown', handleKeyPress);
+        state.characters[0]?.classList.add('current', 'blink');
         state.timer = setInterval(updateTimer, 1000);
     }
 
-    /**
-     * Handles key presses during the typing session.
-     * @param {KeyboardEvent} e - The keyboard event.
-     */
     function handleKeyPress(e) {
-        if (state.status !== 'typing' || state.currentIndex >= state.characters.length) {
-            return;
-        }
+        if (state.status !== 'typing' || state.currentIndex >= state.characters.length) return;
+        if (e.key === ' ') e.preventDefault();
 
         const currentSpan = state.characters[state.currentIndex];
-        const nextSpan = state.characters[state.currentIndex + 1];
-        
-        // Prevent default for space to avoid page scrolling, and for apostrophe/quote to avoid browser find-bar
-        if (e.key === ' ' || e.key === "'" || e.key === '"') e.preventDefault();
         
         if (e.key === 'Backspace') {
             if (state.currentIndex > 0) {
-                // Move cursor back
                 currentSpan.classList.remove('current', 'blink');
                 state.currentIndex--;
-                const prevSpan = state.characters[state.currentIndex];
-                prevSpan.className = 'char current blink';
+                state.characters[state.currentIndex].className = 'char current blink';
             }
             return;
         }
         
-        // Ignore non-printable keys (except backspace)
         if (e.key.length !== 1) return;
         
         state.totalCharsTyped++;
-
-        if (e.key === currentSpan.innerText) {
-            currentSpan.classList.add('correct');
-            currentSpan.classList.remove('incorrect');
-        } else {
-            currentSpan.classList.add('incorrect');
-            currentSpan.classList.remove('correct');
-            state.errors++;
-        }
-
-        // Move cursor forward
-        currentSpan.classList.remove('current', 'blink');
-        if (nextSpan) {
-            nextSpan.classList.add('current', 'blink');
-            checkScroll(nextSpan);
-        }
+        currentSpan.className = e.key === currentSpan.innerText ? 'char correct' : 'char incorrect';
+        if (e.key !== currentSpan.innerText) state.errors++;
         
         state.currentIndex++;
-
-        if (state.currentIndex >= state.characters.length) {
-            // This scenario is unlikely with long text, but handled
+        if (state.currentIndex < state.characters.length) {
+            state.characters[state.currentIndex].classList.add('current', 'blink');
+            checkScroll(state.characters[state.currentIndex]);
+        } else {
             endGame();
         }
+
+        // Update WPM display in real-time
+        updateTimerDisplay();
+        if (state.timeRemaining <= 0) endGame();
     }
 
-    /**
-     * Checks and adjusts the scroll position of the paragraph container.
-     * @param {HTMLElement} currentElement - The current character span.
-     */
-    function checkScroll(currentElement) {
-        const containerRect = paragraphDisplay.getBoundingClientRect();
-        const charRect = currentElement.getBoundingClientRect();
-
-        // If the character's top position is past the halfway point of the container
-        if (charRect.top > containerRect.top + containerRect.height / 2) {
-            paragraphDisplay.scrollTop += charRect.height * 1.8; // Scroll by one line height
-        }
-    }
-    
-    /**
-     * Updates the timer display and live WPM.
-     */
     function updateTimer() {
         state.timeRemaining--;
         updateTimerDisplay();
-        updateWPMDisplay();
-
-        if (state.timeRemaining <= 0) {
-            endGame();
-        }
+        updateWpmDisplay();
+        if (state.timeRemaining <= 0) endGame();
     }
 
-    /**
-     * Formats and displays the remaining time.
-     */
-    function updateTimerDisplay() {
-        const minutes = Math.floor(state.timeRemaining / 60);
-        const seconds = state.timeRemaining % 60;
-        timeDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
-
-    /**
-     * Calculates and displays the live WPM.
-     */
-    function updateWPMDisplay() {
-        const timeElapsedMinutes = (state.selectedDuration - state.timeRemaining) / 60;
-        if (timeElapsedMinutes > 0) {
-            const grossWPM = (state.totalCharsTyped / 5) / timeElapsedMinutes;
-            wpmDisplay.textContent = Math.round(grossWPM);
-        }
-    }
-
-    /**
-     * Ends the game, calculates results, and shows the results screen.
-     */
-    function endGame() {
-        clearInterval(state.timer);
-        state.status = 'finished';
-        document.removeEventListener('keydown', handleKeyPress);
-        
-        typingScreen.classList.add('hidden');
-        resultsScreen.classList.remove('hidden');
-
-        calculateAndDisplayResults();
-    }
-    
-    /**
-     * Calculates and displays the final statistics.
-     */
     function calculateAndDisplayResults() {
-        const timeElapsedMinutes = state.selectedDuration / 60;
-        const grossWPM = (state.totalCharsTyped / 5) / timeElapsedMinutes;
-        const netWPM = Math.round(grossWPM - (state.errors / timeElapsedMinutes));
+        const timeMinutes = state.selectedDuration / 60;
+        const grossWPM = (state.totalCharsTyped / 5) / timeMinutes;
+        const netWPM = Math.round(grossWPM - (state.errors / timeMinutes));
         const finalWPM = Math.max(0, netWPM);
-
-        const accuracy = state.totalCharsTyped > 0 
-            ? Math.round(((state.totalCharsTyped - state.errors) / state.totalCharsTyped) * 100)
-            : 0;
+        const accuracy = state.totalCharsTyped > 0 ? Math.round(((state.totalCharsTyped - state.errors) / state.totalCharsTyped) * 100) : 100;
 
         resultWpm.textContent = finalWPM;
         resultAccuracy.textContent = `${accuracy}%`;
         resultErrors.textContent = state.errors;
         resultChars.textContent = `${state.currentIndex} / ${state.totalCharsTyped}`;
-        
-        saveStatsToStorage(finalWPM);
+    }
+    // --- 5. Utility Functions ---
+
+    function updateWpmDisplay() {
+        const elapsed = state.selectedDuration - state.timeRemaining;
+        const minutes = elapsed / 60;
+        let wpm = 0;
+        if (minutes > 0) {
+            wpm = Math.round((state.totalCharsTyped / 5) / minutes);
+        }
+        wpmDisplay.textContent = wpm;
+    }
+
+    function updateTimerDisplay() {
+        timeDisplay.textContent = `${Math.floor(state.timeRemaining / 60)}:${(state.timeRemaining % 60).toString().padStart(2, '0')}`;
+    }
+
+    function updateTimerDisplay() {
+        timeDisplay.textContent = `${Math.floor(state.timeRemaining / 60)}:${(state.timeRemaining % 60).toString().padStart(2, '0')}`;
+    }
+
+    function checkScroll(element) {
+        const containerRect = paragraphDisplay.getBoundingClientRect();
+        if (element.getBoundingClientRect().top > containerRect.top + containerRect.height / 1.5) {
+            paragraphDisplay.scrollTop += element.getBoundingClientRect().height;
+        }
     }
 
     /**
-     * Saves the final stats to localStorage.
-     * @param {number} wpm - The final calculated WPM.
+     * **CRITICAL FIX:** This function now ONLY saves the statistics needed
+     * for historical purposes. It does NOT save the entire game state.
      */
-    function saveStatsToStorage(wpm) {
+    function saveHistoricalStats(wpm) {
         localStorage.setItem('typingRacer_lastWPM', wpm);
         const bestWPM = localStorage.getItem('typingRacer_bestWPM') || 0;
         if (wpm > bestWPM) {
@@ -327,6 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Start the application ---
+    function loadHistoricalStats() {
+        lastWpmDisplay.textContent = localStorage.getItem('typingRacer_lastWPM') || 'N/A';
+        bestWpmDisplay.textContent = localStorage.getItem('typingRacer_bestWPM') || 'N/A';
+    }
+
+    // --- 6. Start the Application ---
     init();
 });
