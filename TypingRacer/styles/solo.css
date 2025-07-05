@@ -1,0 +1,37 @@
+/* styles/solo.css */
+
+.text-to-type {
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    text-align: left;
+    font-size: 1.2rem;
+    line-height: 1.7;
+    color: #444;
+}
+
+.stats-container {
+    display: flex;
+    justify-content: space-around;
+    padding: 20px;
+    background: #ecf0f1;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-item .label {
+    font-size: 1rem;
+    color: #7f8c8d;
+}
+
+.stat-item .value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2c3e50;
+}

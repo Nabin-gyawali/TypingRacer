@@ -1,0 +1,13 @@
+/* styles/multiplayer.css */
+
+.lobby-form {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.button-group {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+}
