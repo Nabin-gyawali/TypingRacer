@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultWpm = document.getElementById('result-wpm');
     const resultAccuracy = document.getElementById('result-accuracy');
     const resultErrors = document.getElementById('result-errors');
-    const resultChars = document.getElementById('result-chars');
 
     // --- 2. State Management ---
     // The state object is now always transient. It is never saved to localStorage.
@@ -244,7 +243,6 @@ document.addEventListener('DOMContentLoaded', () => {
         resultWpm.textContent = finalWPM;
         resultAccuracy.textContent = `${accuracy}%`;
         resultErrors.textContent = state.errors;
-        resultChars.textContent = `${state.currentIndex} / ${state.totalCharsTyped}`;
     }
     // --- 5. Utility Functions ---
 
