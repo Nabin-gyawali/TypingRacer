@@ -1,41 +1,81 @@
-<!-- public/solo/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solo Test - Typing Racer</title>
-    <link rel="stylesheet" href="../../styles/main.css">
+    <title>Solo Typing Test</title>
     <link rel="stylesheet" href="../../styles/solo.css">
 </head>
 <body>
 
     <div class="container">
-        <h2>Solo Typing Test</h2>
-        
-        <div class="stats-container">
-            <div class="stat-item">
-                <div class="label">Time</div>
-                <div class="value">60</div>
+        <!-- Setup Screen -->
+        <div id="setup-screen">
+            <h1>Solo Typing Test</h1>
+            <p>Select your desired duration and click start to begin.</p>
+            <div class="settings-group">
+                <label for="time-select">Duration:</label>
+                <select id="time-select">
+                    <option value="60">1 Minute</option>
+                    <option value="120">2 Minutes</option>
+                    <option value="300" selected>5 Minutes</option>
+                </select>
+                <button id="start-btn">Start Typing</button>
             </div>
-            <div class="stat-item">
-                <div class="label">WPM</div>
-                <div class="value">0</div>
-            </div>
-            <div class="stat-item">
-                <div class="label">Accuracy</div>
-                <div class="value">100%</div>
+            <div class="stats-history">
+                <h3>Your Stats</h3>
+                <p>Last Result: <span id="last-wpm">N/A</span> WPM</p>
+                <p>Best Result: <span id="best-wpm">N/A</span> WPM</p>
             </div>
         </div>
 
-        <div class="text-to-type">
-            The quick brown fox jumps over the lazy dog. This sentence is a classic pangram, meaning it contains every letter of the English alphabet. It's often used for practicing touch typing and testing typewriters and keyboards.
+        <!-- Typing Screen -->
+        <div id="typing-screen" class="hidden">
+            <div class="stats-bar">
+                <div class="stat">
+                    <div id="time-display" class="value">0:00</div>
+                    <div class="label">Time</div>
+                </div>
+                <div class="stat">
+                    <div id="wpm-display" class="value">0</div>
+                    <div class="label">WPM</div>
+                </div>
+                <input type="text" id="typing-input" class="input-field" autofocus>
+            </div>
+            <div id="paragraph-display"></div>
         </div>
 
-        <input type="text" class="input-field" placeholder="Start typing here...">
-        
-        <a href="../index.html" class="back-link">← Back to Home</a>
+        <!-- Results Screen -->
+        <div id="results-screen" class="hidden">
+            <h2>Time's Up!</h2>
+            <div class="results-grid">
+                <div class="result-box">
+                    <div class="label">WPM</div>
+                    <div id="result-wpm" class="value">0</div>
+                </div>
+                <div class="result-box">
+                    <div class="label">Accuracy</div>
+                    <div id="result-accuracy" class="value">0%</div>
+                </div>
+                <div class="result-box">
+                    <div class="label">Errors</div>
+                    <div id="result-errors" class="value">0</div>
+                </div>
+                <div class="result-box">
+                    <div class="label">Characters</div>
+                    <div id="result-chars" class="value">0</div>
+                </div>
+            </div>
+            <button id="play-again-btn">Play Again</button>
+        </div>
+
     </div>
 
+    <!-- Countdown Overlay -->
+    <div id="countdown-overlay" class="hidden">
+        <div id="countdown-timer">3</div>
+    </div>
+
+    <script src="../../scripts/solo.js"></script>
 </body>
 </html>
