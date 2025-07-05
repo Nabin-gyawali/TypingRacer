@@ -21,9 +21,9 @@ Give it a spin right here:
 - ✅ Clean and Responsive UI
 
 ## 🌙 New in This Version
-✨ Dark Mode Toggle (Light 🌞 / Dark 🌙)
-✔️ Works across all pages (Home, Solo, Race, Multiplayer)
-💾 Remembers your theme using localStorage
+- ✨ Dark Mode Toggle (Light 🌞 / Dark 🌙)
+- ✔️ Works across all pages (Home, Solo, Race, Multiplayer)
+- 💾 Remembers your theme using localStorage
 
 
 ## 🎮 What’s Working Now
@@ -48,8 +48,9 @@ More cool ideas for the future:
 - 🧩 Difficulty levels
 - 🏆 Leaderboard (maybe👀... if we get fancy)
 
+  Have ideas? Feel free to open an issue or pull request!
 ---
-Have ideas? Feel free to open an issue or pull request!
+
 
 ## 🛠 How to Run Locally
 
@@ -73,6 +74,6 @@ Pull requests are welcome! If you'd like to:
 Fork the repo, create a feature branch (feature/your-thing), and submit a PR.
 
 ## 🧑‍💻 Author
-Built and maintained by @Nabin-gyawali
+Built and maintained by @Nabin-gyawali <br>
 With contributions from awesome developers like you 💙
 
