@@ -156,3 +156,54 @@ p, .subtext {
     border-color: #3498db;
     box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
+
+/* for dark mode */
+.toggle-btn {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  padding: 8px 12px;
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+/* --- Dark Mode --- */
+body.dark-mode {
+  background: #121212 !important;
+  color: #f1f1f1 !important;
+}
+
+body.dark-mode .container {
+  background-color: #1e1e1e !important;
+  box-shadow: 0 8px 32px rgba(255, 255, 255, 0.05) !important;
+  border-color: #444 !important;
+}
+
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode p,
+body.dark-mode a,
+body.dark-mode button {
+  color: #f1f1f1 !important;
+  background-color: transparent !important;
+  border-color: #666 !important;
+}
+
+body.dark-mode .btn {
+  background: #2980b9 !important;
+}
+
+body.dark-mode .card {
+  background-color: #222 !important;
+  border-color: #333 !important;
+}
+
+body.dark-mode .icon {
+  color: #00bcd4 !important;
+}
+

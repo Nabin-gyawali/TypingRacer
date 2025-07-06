@@ -69,13 +69,13 @@ body {
 
 .stats-history {
     margin-top: 40px;
-    background-color: #f8f9fa;
+    /* background-color: #f2f3f5; */
     padding: 20px;
     border-radius: 8px;
     border: 1px solid #e0e0e0;
 }
-.stats-history h3 { color: #34495e; }
-.stats-history p { color: #555; margin: 5px 0 0 0; }
+/* .stats-history h3 { color: #1a64af; }
+.stats-history p {  margin: 5px 0 0 0; } */
 .stats-history span { font-weight: 600; }
 
 /* --- Countdown Overlay --- */
